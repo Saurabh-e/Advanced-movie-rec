@@ -1,33 +1,65 @@
 import requests
 import streamlit as st
 
-# =============================
-# CONFIG
-# =============================
 API_BASE = "https://movie-rec-466x.onrender.com"
 TMDB_IMG = "https://image.tmdb.org/t/p/w500"
 
-st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="wide")
+st.set_page_config(page_title="Movie Recommender", layout="wide")
 
 # =============================
-# STYLES
+# SAFE API
 # =============================
-st.markdown("""
-<style>
-body {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: white;
-}
-.movie-title {
-    text-align: center;
-    font-size: 0.9rem;
-    margin-top: 5px;
-}
-</style>
-""", unsafe_allow_html=True)
+def api_get(path, params=None):
+    try:
+        r = requests.get(f"{API_BASE}{path}", params=params, timeout=10)
+        if r.status_code == 200:
+            return r.json()
+        return None
+    except Exception as e:
+        st.error(f"API Error: {e}")
+        return None
 
 # =============================
-# SESSION STATE
+# GRID (SAFE VERSION)
+# =============================
+def poster_grid(cards, cols=6):
+    if not cards:
+        st.warning("No data available")
+        return
+
+    for i in range(0, len(cards), cols):
+        row = st.columns(cols)
+
+        for j, col in enumerate(row):
+            if i + j >= len(cards):
+                break
+
+            m = cards[i + j]
+
+            with col:
+                # SAFE IMAGE
+                poster = m.get("poster_url") or m.get("poster_path")
+
+                if poster:
+                    if "http" not in poster:
+                        poster = f"{TMDB_IMG}{poster}"
+                    st.image(poster)
+
+                # SAFE TITLE
+                title = m.get("title") or m.get("name") or "No Title"
+                st.write(title)
+
+                # SAFE BUTTON
+                tmdb_id = m.get("tmdb_id") or m.get("id")
+
+                if tmdb_id:
+                    if st.button("▶", key=f"{i}_{j}_{tmdb_id}"):
+                        st.session_state.view = "details"
+                        st.session_state.selected_tmdb_id = tmdb_id
+                        st.rerun()
+
+# =============================
+# STATE
 # =============================
 if "view" not in st.session_state:
     st.session_state.view = "home"
@@ -35,163 +67,59 @@ if "view" not in st.session_state:
 if "selected_tmdb_id" not in st.session_state:
     st.session_state.selected_tmdb_id = None
 
-if "history" not in st.session_state:
-    st.session_state.history = []
-
 # =============================
-# NAVIGATION
-# =============================
-def goto_home():
-    st.session_state.view = "home"
-    st.rerun()
-
-def goto_details(tmdb_id):
-    st.session_state.view = "details"
-    st.session_state.selected_tmdb_id = tmdb_id
-    st.session_state.history.append(tmdb_id)
-    st.rerun()
-
-# =============================
-# API
-# =============================
-@st.cache_data(ttl=30)
-def api_get(path, params=None):
-    try:
-        r = requests.get(f"{API_BASE}{path}", params=params, timeout=10)
-        return r.json()
-    except:
-        return None
-
-# =============================
-# GRID
-# =============================
-def poster_grid(cards, cols=6):
-    if not cards:
-        return
-
-    for i in range(0, len(cards), cols):
-        row = st.columns(cols)
-        for j, col in enumerate(row):
-            if i + j >= len(cards):
-                break
-
-            m = cards[i + j]
-            with col:
-                if m.get("poster_url"):
-                    st.image(m["poster_url"])
-
-                if st.button("▶", key=f"{i+j}_{m.get('tmdb_id')}"):
-                    goto_details(m.get("tmdb_id"))
-
-                st.markdown(
-                    f"<div class='movie-title'>{m.get('title')}</div>",
-                    unsafe_allow_html=True
-                )
-
-# =============================
-# SIDEBAR
-# =============================
-with st.sidebar:
-    st.title("🎬 Menu")
-
-    if st.button("🏠 Home"):
-        goto_home()
-
-    category = st.selectbox(
-        "Category",
-        ["trending", "popular", "top_rated", "now_playing"]
-    )
-
-    cols = st.slider("Columns", 4, 8, 6)
-
-    year_filter = st.slider("Year", 1980, 2025, (2000, 2025))
-    rating_filter = st.slider("Rating", 0.0, 10.0, (5.0, 10.0))
-
-# =============================
-# TITLE
+# HOME
 # =============================
 st.title("🎬 Movie Recommender")
 
-# =============================
-# HOME VIEW
-# =============================
 if st.session_state.view == "home":
 
-    query = st.text_input("Search movies...")
+    query = st.text_input("Search movies")
 
     if query:
-        with st.spinner("Searching..."):
-            data = api_get("/tmdb/search", {"query": query})
+        data = api_get("/tmdb/search", {"query": query})
 
         if data and "results" in data:
-            cards = []
-            for m in data["results"]:
-                year = int(m.get("release_date", "2000")[:4]) if m.get("release_date") else 2000
-                rating = m.get("vote_average", 0)
-
-                if year_filter[0] <= year <= year_filter[1] and rating_filter[0] <= rating <= rating_filter[1]:
-                    cards.append({
-                        "tmdb_id": m["id"],
-                        "title": m["title"],
-                        "poster_url": f"{TMDB_IMG}{m['poster_path']}" if m.get("poster_path") else None
-                    })
-
-            st.write(f"{len(cards)} results found")
-            poster_grid(cards, cols)
+            poster_grid(data["results"])
 
     else:
-        cards = api_get("/home", {"category": category, "limit": 24})
-        if cards:
-            poster_grid(cards, cols)
+        data = api_get("/home", {"category": "popular", "limit": 24})
 
-    # HISTORY
-    if st.session_state.history:
-        st.subheader("🕘 Recently Viewed")
-
-        hist_cards = api_get("/recommend/genre", {
-            "tmdb_id": st.session_state.history[-1],
-            "limit": 12
-        })
-
-        if hist_cards:
-            poster_grid(hist_cards, cols)
+        if data:
+            poster_grid(data)
 
 # =============================
-# DETAILS VIEW
+# DETAILS
 # =============================
 elif st.session_state.view == "details":
 
-    tmdb_id = st.session_state.selected_tmdb_id
-
     if st.button("← Back"):
-        goto_home()
+        st.session_state.view = "home"
+        st.rerun()
+
+    tmdb_id = st.session_state.selected_tmdb_id
 
     data = api_get(f"/movie/id/{tmdb_id}")
 
     if not data:
-        st.error("Failed to load movie")
+        st.error("Movie not found")
         st.stop()
 
-    # MOVIE DETAILS
-    if data.get("backdrop_url"):
-        st.image(data.get("backdrop_url"))
-
-    st.header(data.get("title"))
-    st.write(f"⭐ Rating: {data.get('vote_average', 0)}")
-    st.write(data.get("overview", ""))
+    st.header(data.get("title", "No Title"))
+    st.write(f"⭐ {data.get('vote_average', 'N/A')}")
+    st.write(data.get("overview", "No description"))
 
     # =============================
-    # RECOMMENDATIONS (FIXED)
+    # RECOMMENDATIONS (SAFE)
     # =============================
     st.subheader("🎯 Recommendations")
 
-    with st.spinner("Fetching recommendations..."):
-        recs = api_get("/recommend/hybrid", {
-            "tmdb_id": tmdb_id,
-            "limit": 24
-        })
+    recs = api_get("/recommend/hybrid", {
+        "tmdb_id": tmdb_id,
+        "limit": 24
+    })
 
-    if recs:
-        poster_grid(recs, cols)
+    if recs and isinstance(recs, list):
+        poster_grid(recs)
     else:
-        st.warning("No recommendations found")
+        st.warning("No recommendations found or API error")
