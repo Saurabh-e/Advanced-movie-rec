@@ -10,27 +10,17 @@ TMDB_IMG = "https://image.tmdb.org/t/p/w500"
 st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="wide")
 
 # =============================
-# GLOBAL STYLES
+# STYLES
 # =============================
 st.markdown("""
 <style>
 body {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: #f5f5f5;
-}
-.card {
-    border-radius: 18px;
-    overflow: hidden;
-    background: rgba(255,255,255,0.05);
-    padding: 6px;
-    transition: 0.3s;
-}
-.card:hover {
-    transform: scale(1.05);
+    color: white;
 }
 .movie-title {
-    font-size: 0.9rem;
     text-align: center;
+    font-size: 0.9rem;
     margin-top: 5px;
 }
 </style>
@@ -62,7 +52,7 @@ def goto_details(tmdb_id):
     st.rerun()
 
 # =============================
-# API CALL
+# API
 # =============================
 @st.cache_data(ttl=30)
 def api_get(path, params=None):
@@ -73,7 +63,7 @@ def api_get(path, params=None):
         return None
 
 # =============================
-# GRID DISPLAY
+# GRID
 # =============================
 def poster_grid(cards, cols=6):
     if not cards:
@@ -93,7 +83,10 @@ def poster_grid(cards, cols=6):
                 if st.button("▶", key=f"{i+j}_{m.get('tmdb_id')}"):
                     goto_details(m.get("tmdb_id"))
 
-                st.markdown(f"<div class='movie-title'>{m.get('title')}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div class='movie-title'>{m.get('title')}</div>",
+                    unsafe_allow_html=True
+                )
 
 # =============================
 # SIDEBAR
@@ -143,7 +136,7 @@ if st.session_state.view == "home":
                         "poster_url": f"{TMDB_IMG}{m['poster_path']}" if m.get("poster_path") else None
                     })
 
-            st.write(f"{len(cards)} results")
+            st.write(f"{len(cards)} results found")
             poster_grid(cards, cols)
 
     else:
@@ -153,7 +146,7 @@ if st.session_state.view == "home":
 
     # HISTORY
     if st.session_state.history:
-        st.subheader("Recently Viewed")
+        st.subheader("🕘 Recently Viewed")
 
         hist_cards = api_get("/recommend/genre", {
             "tmdb_id": st.session_state.history[-1],
@@ -179,10 +172,11 @@ elif st.session_state.view == "details":
         st.error("Failed to load movie")
         st.stop()
 
-    # TITLE + IMAGE
-    st.image(data.get("backdrop_url", ""))
-    st.header(data.get("title"))
+    # MOVIE DETAILS
+    if data.get("backdrop_url"):
+        st.image(data.get("backdrop_url"))
 
+    st.header(data.get("title"))
     st.write(f"⭐ Rating: {data.get('vote_average', 0)}")
     st.write(data.get("overview", ""))
 
