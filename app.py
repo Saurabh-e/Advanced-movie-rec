@@ -258,4 +258,4 @@ elif st.session_state.view == "details":
         placeholder.empty()
         poster_grid(rec.get("genre_recommendations", []), cols)
     else:
-        placeholder.warning("No recommendations found.")  Give new and advance ui for given code
+        placeholder.warning("No recommendations found.")  
