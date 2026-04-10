@@ -22,7 +22,7 @@ def api_get(path, params=None):
 # =============================
 # GRID (SAFE VERSION)
 # =============================
-def poster_grid(cards, cols=6):
+def poster_grid(cards, cols=6, key_prefix="grid"):
     if not cards:
         st.warning("No data available")
         return
@@ -34,7 +34,7 @@ def poster_grid(cards, cols=6):
             if i + j >= len(cards):
                 break
 
-            m = cards[i + j]
+            m = cards
 
             with col:
                 # SAFE IMAGE
@@ -43,7 +43,8 @@ def poster_grid(cards, cols=6):
                 if poster:
                     if "http" not in poster:
                         poster = f"{TMDB_IMG}{poster}"
-                    st.image(poster)
+                    # use_container_width prevents the image from breaking the column layout
+                    st.image(poster, use_container_width=True)
 
                 # SAFE TITLE
                 title = m.get("title") or m.get("name") or "No Title"
@@ -53,7 +54,8 @@ def poster_grid(cards, cols=6):
                 tmdb_id = m.get("tmdb_id") or m.get("id")
 
                 if tmdb_id:
-                    if st.button("▶", key=f"{i}_{j}_{tmdb_id}"):
+                    # Added key_prefix to ensure global uniqueness across different views
+                    if st.button("▶", key=f"{key_prefix}_{i}_{j}_{tmdb_id}"):
                         st.session_state.view = "details"
                         st.session_state.selected_tmdb_id = tmdb_id
                         st.rerun()
@@ -80,13 +82,17 @@ if st.session_state.view == "home":
         data = api_get("/tmdb/search", {"query": query})
 
         if data and "results" in data:
-            poster_grid(data["results"])
+            poster_grid(data, key_prefix="search")
 
     else:
         data = api_get("/home", {"category": "popular", "limit": 24})
-
+        
+        # Added safety fallback in case the API wraps home data in a dictionary
         if data:
-            poster_grid(data)
+            if isinstance(data, dict) and "results" in data:
+                poster_grid(data, key_prefix="home")
+            else:
+                poster_grid(data, key_prefix="home")
 
 # =============================
 # DETAILS
@@ -120,6 +126,6 @@ elif st.session_state.view == "details":
     })
 
     if recs and isinstance(recs, list):
-        poster_grid(recs)
+        poster_grid(recs, key_prefix="recs")
     else:
         st.warning("No recommendations found or API error")
