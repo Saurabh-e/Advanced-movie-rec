@@ -11,34 +11,81 @@ TMDB_IMG = "https://image.tmdb.org/t/p/w500"
 st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="wide")
 
 # =============================
-# GLOBAL STYLES (DARK + MODERN)
+# GLOBAL STYLES (GLASS + MODERN)
 # =============================
 st.markdown("""
 <style>
 body {
-    background-color: #0e1117;
-    color: white;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: #f5f5f5;
+    font-family: 'Segoe UI', sans-serif;
 }
 .block-container {
     padding-top: 1rem;
     max-width: 1400px;
 }
 .card {
-    border-radius: 14px;
+    border-radius: 18px;
     overflow: hidden;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 6px;
 }
 .card:hover {
-    transform: translateY(-6px) scale(1.03);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    transform: translateY(-8px) scale(1.05);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6);
 }
 .movie-title {
-    font-size: 0.85rem;
-    padding-top: 6px;
-    color: white;
+    font-size: 0.95rem;
+    padding-top: 8px;
+    color: #f5f5f5;
+    font-weight: 600;
+    text-align: center;
 }
 .small-muted {
     color: #9ca3af;
+    font-size: 0.8rem;
+}
+.sidebar .stButton>button {
+    background: linear-gradient(90deg, #ff416c, #ff4b2b);
+    color: white;
+    border-radius: 10px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+.sidebar .stButton>button:hover {
+    background: linear-gradient(90deg, #ff4b2b, #ff416c);
+    transform: scale(1.05);
+}
+.hero-banner {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    margin-bottom: 20px;
+}
+.hero-banner img {
+    width: 100%;
+    height: 350px;
+    object-fit: cover;
+    filter: brightness(45%);
+}
+.hero-banner .overlay {
+    position: absolute;
+    bottom: 30px;
+    left: 40px;
+    color: white;
+}
+.hero-banner h2 {
+    font-size: 2rem;
+    font-weight: bold;
+}
+.hero-banner p {
+    max-width: 650px;
+    font-size: 1rem;
+    color: #d1d5db;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -86,12 +133,11 @@ def hero_banner(movie):
     if not movie:
         return
     st.markdown(f"""
-    <div style="position:relative; margin-bottom:20px;">
-        <img src="{movie.get('backdrop_url','')}" 
-        style="width:100%; height:320px; object-fit:cover; filter:brightness(50%); border-radius:16px;">
-        <div style="position:absolute; bottom:20px; left:30px;">
+    <div class="hero-banner">
+        <img src="{movie.get('backdrop_url','')}">
+        <div class="overlay">
             <h2>{movie.get('title')}</h2>
-            <p style="max-width:600px;">{movie.get('overview','')[:150]}...</p>
+            <p>{movie.get('overview','')[:180]}...</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -250,12 +296,4 @@ elif st.session_state.view == "details":
     placeholder = st.empty()
 
     with placeholder.container():
-        with st.spinner("Fetching recommendations... 🎬"):
-            time.sleep(0.4)
-            rec = api_get("/movie/search", {"query": data.get("title")})
-
-    if rec:
-        placeholder.empty()
-        poster_grid(rec.get("genre_recommendations", []), cols)
-    else:
-        placeholder.warning("No recommendations found.")
+        with
