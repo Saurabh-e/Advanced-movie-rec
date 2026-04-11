@@ -4,10 +4,10 @@ import streamlit as st
 API_BASE = "https://movie-rec-466x.onrender.com"
 TMDB_IMG = "https://image.tmdb.org/t/p/w500"
 
-st.set_page_config(page_title="Movie Recommender", layout="wide")
+st.set_page_config(page_title="Advanced Movie Recommender", layout="wide")
 
 # =============================
-# SAFE API
+# API
 # =============================
 def api_get(path, params=None):
     try:
@@ -20,9 +20,9 @@ def api_get(path, params=None):
         return None
 
 # =============================
-# GRID (SAFE VERSION)
+# GRID
 # =============================
-def poster_grid(cards, cols=6, key_prefix="grid"):
+def poster_grid(cards, cols=6):
     if not cards:
         st.warning("No data available")
         return
@@ -34,28 +34,23 @@ def poster_grid(cards, cols=6, key_prefix="grid"):
             if i + j >= len(cards):
                 break
 
-            m = cards
+            m = cards[i + j]
 
             with col:
-                # SAFE IMAGE
                 poster = m.get("poster_url") or m.get("poster_path")
 
                 if poster:
                     if "http" not in poster:
                         poster = f"{TMDB_IMG}{poster}"
-                    # use_container_width prevents the image from breaking the column layout
-                    st.image(poster, use_container_width=True)
+                    st.image(poster)
 
-                # SAFE TITLE
                 title = m.get("title") or m.get("name") or "No Title"
                 st.write(title)
 
-                # SAFE BUTTON
                 tmdb_id = m.get("tmdb_id") or m.get("id")
 
                 if tmdb_id:
-                    # Added key_prefix to ensure global uniqueness across different views
-                    if st.button("▶", key=f"{key_prefix}_{i}_{j}_{tmdb_id}"):
+                    if st.button("▶", key=f"{i}_{j}_{tmdb_id}"):
                         st.session_state.view = "details"
                         st.session_state.selected_tmdb_id = tmdb_id
                         st.rerun()
@@ -82,17 +77,13 @@ if st.session_state.view == "home":
         data = api_get("/tmdb/search", {"query": query})
 
         if data and "results" in data:
-            poster_grid(data, key_prefix="search")
+            poster_grid(data["results"])
 
     else:
         data = api_get("/home", {"category": "popular", "limit": 24})
-        
-        # Added safety fallback in case the API wraps home data in a dictionary
+
         if data:
-            if isinstance(data, dict) and "results" in data:
-                poster_grid(data, key_prefix="home")
-            else:
-                poster_grid(data, key_prefix="home")
+            poster_grid(data)
 
 # =============================
 # DETAILS
@@ -115,9 +106,6 @@ elif st.session_state.view == "details":
     st.write(f"⭐ {data.get('vote_average', 'N/A')}")
     st.write(data.get("overview", "No description"))
 
-    # =============================
-    # RECOMMENDATIONS (SAFE)
-    # =============================
     st.subheader("🎯 Recommendations")
 
     recs = api_get("/recommend/hybrid", {
@@ -125,7 +113,7 @@ elif st.session_state.view == "details":
         "limit": 24
     })
 
-    if recs and isinstance(recs, list):
-        poster_grid(recs, key_prefix="recs")
+    if isinstance(recs, list) and len(recs) > 0:
+        poster_grid(recs)
     else:
-        st.warning("No recommendations found or API error")
+        st.warning("No recommendations found")
