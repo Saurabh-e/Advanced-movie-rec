@@ -147,7 +147,7 @@ with st.sidebar:
     cols = st.slider("Grid Columns", 4, 8, 6)
 
     st.markdown("### 🎛️ Filters")
-    year_filter = st.slider("Year", 1980, 2025, (2000, 2025))
+    year_filter = st.slider("Year", 1980, 2025, (2000, 2026))
     rating_filter = st.slider("Rating", 0.0, 10.0, (5.0, 10.0))
 
 # =============================
